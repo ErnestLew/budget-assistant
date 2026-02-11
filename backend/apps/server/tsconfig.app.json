@@ -1,0 +1,24 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "outDir": "../../dist/out-tsc",
+    "module": "commonjs",
+    "types": ["node"],
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "target": "es2021",
+    "moduleResolution": "node"
+  },
+  "include": [
+    "src/**/*.ts",
+    "../gateway/src/**/*.ts",
+    "../auth-service/src/**/*.ts",
+    "../core-service/src/**/*.ts",
+    "../ai-service/src/**/*.ts",
+    "../notification-service/src/**/*.ts"
+  ],
+  "exclude": [
+    "**/*.spec.ts",
+    "**/*.test.ts"
+  ]
+}

@@ -1,0 +1,120 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                 String    @id @default(uuid()) @db.Uuid
+  email              String    @unique @db.VarChar(255)
+  name               String    @db.VarChar(255)
+  image              String?   @db.VarChar(500)
+  googleId           String?   @unique @map("google_id") @db.VarChar(255)
+  googleAccessToken  String?   @map("google_access_token") @db.VarChar(500)
+  googleRefreshToken String?   @map("google_refresh_token") @db.VarChar(500)
+  tokenExpiresAt     DateTime? @map("token_expires_at")
+  isActive           Boolean   @default(true) @map("is_active")
+  preferredCurrency  String    @default("MYR") @map("preferred_currency") @db.VarChar(3)
+  timezone           String    @default("Asia/Kuala_Lumpur") @db.VarChar(50)
+  groqApiKey         String?   @map("groq_api_key") @db.VarChar(500)
+  geminiApiKey       String?   @map("gemini_api_key") @db.VarChar(500)
+  lastSyncAt         DateTime? @map("last_sync_at")
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt          DateTime  @updatedAt @map("updated_at") @db.Timestamptz()
+
+  transactions Transaction[]
+  budgets      Budget[]
+  budgetAlerts BudgetAlert[]
+
+  @@map("users")
+}
+
+model Category {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String   @db.VarChar(100)
+  icon      String?  @db.VarChar(50)
+  color     String   @default("#6B7280") @db.VarChar(20)
+  parentId  String?  @map("parent_id") @db.Uuid
+  userId    String?  @map("user_id") @db.Uuid
+  isDefault Boolean  @default(false) @map("is_default")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz()
+
+  parent       Category?     @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  children     Category[]    @relation("CategoryHierarchy")
+  transactions Transaction[]
+
+  @@index([name])
+  @@map("categories")
+}
+
+model Transaction {
+  id               String   @id @default(uuid()) @db.Uuid
+  userId           String   @map("user_id") @db.Uuid
+  categoryId       String?  @map("category_id") @db.Uuid
+  merchant         String   @db.VarChar(255)
+  amount           Decimal  @db.Decimal(12, 2)
+  currency         String   @default("USD") @db.VarChar(3)
+  date             DateTime
+  description      String?  @db.Text
+  emailId          String?  @unique @map("email_id") @db.VarChar(255)
+  emailSubject     String?  @map("email_subject") @db.VarChar(500)
+  status           String   @default("processed") @db.VarChar(20)
+  confidence       Float    @default(1.0)
+  rawData          Json?    @map("raw_data") @db.JsonB
+  duplicateGroupId String?  @map("duplicate_group_id") @db.VarChar(36)
+  isPrimary        Boolean  @default(true) @map("is_primary")
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt        DateTime @updatedAt @map("updated_at") @db.Timestamptz()
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category Category? @relation(fields: [categoryId], references: [id])
+
+  @@index([userId])
+  @@index([date])
+  @@index([duplicateGroupId])
+  @@map("transactions")
+}
+
+model Budget {
+  id         String    @id @default(uuid()) @db.Uuid
+  userId     String    @map("user_id") @db.Uuid
+  categoryId String?   @map("category_id") @db.Uuid
+  name       String    @db.VarChar(255)
+  amount     Decimal   @db.Decimal(12, 2)
+  period     String    @default("monthly") @db.VarChar(20)
+  startDate  DateTime  @map("start_date")
+  endDate    DateTime? @map("end_date")
+  isActive   Boolean   @default(true) @map("is_active")
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt  DateTime  @updatedAt @map("updated_at") @db.Timestamptz()
+
+  user   User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  alerts BudgetAlert[]
+
+  @@index([userId])
+  @@index([categoryId])
+  @@map("budgets")
+}
+
+model BudgetAlert {
+  id               String    @id @default(uuid()) @db.Uuid
+  userId           String    @map("user_id") @db.Uuid
+  budgetId         String    @map("budget_id") @db.Uuid
+  threshold        Int       @default(80)
+  isTriggered      Boolean   @default(false) @map("is_triggered")
+  triggeredAt      DateTime? @map("triggered_at")
+  notificationSent Boolean   @default(false) @map("notification_sent")
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamptz()
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  budget Budget @relation(fields: [budgetId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([budgetId])
+  @@map("budget_alerts")
+}
